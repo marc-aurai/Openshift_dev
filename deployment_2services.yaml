@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        env:
+        - name: MINIO_ROOT_USER
+          value: test
+        - name: MINIO_ROOT_PASSWORD
+          value: test_pwd
+        - name: MINIO_ADDRESS
+          value: ":9000"
+        - name: MINIO_CONSOLE_ADDRESS
+          value: ":9001"
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        command:
+        - "minio"
+        - "server"
+        - "/data"
+        - "--console-address"
+        - ":9001"
+        - "--address"
+        - ":9000"
+      volumes:
+      - name: minio-data
+        persistentVolumeClaim:
+          claimName: minio-pvc  
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+spec:
+  selector:
+    app: minio
+  ports:
+  - protocol: TCP
+    name: port-9000
+    port: 9000
+    targetPort: 9000
+  - protocol: TCP
+    name: port-9001
+    port: 9001
+    targetPort: 9001
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio-route
+spec:
+  to:
+    kind: Service
+    name: minio-service
+  port:
+    targetPort: 9001
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appopenshift
+  template:
+    metadata:
+      labels:
+        app: appopenshift
+    spec:
+      containers:
+      - name: appopenshift
+        image: default-route-openshift-image-registry.apps-crc.testing/appdev/app_openshift:latest
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: IfNotPresent 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appopenshift-service
+spec:
+  selector:
+    app: appopenshift
+  ports:
+  - protocol: TCP
+    name: port-8000
+    port: 8000
+    targetPort: 8000
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: appopenshift-route
+spec:
+  to:
+    kind: Service
+    name: appopenshift-service
+  port:
+    targetPort: 8000

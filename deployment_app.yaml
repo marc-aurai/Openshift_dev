@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appopenshift
+  template:
+    metadata:
+      labels:
+        app: appopenshift
+    spec:
+      containers:
+      - name: appopenshift
+        image: default-route-openshift-image-registry.apps-crc.testing/appdev/app_openshift:latest
+        ports:
+        - containerPort: 8000
+        imagePullPolicy: IfNotPresent 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appopenshift-service
+spec:
+  selector:
+    app: appopenshift
+  ports:
+  - protocol: TCP
+    name: port-8000
+    port: 8000
+    targetPort: 8000
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: appopenshift-route
+spec:
+  to:
+    kind: Service
+    name: appopenshift-service
+  port:
+    targetPort: 8000
